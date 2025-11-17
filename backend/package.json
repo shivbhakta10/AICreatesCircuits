@@ -1,0 +1,28 @@
+{
+  "name": "circuitverse-backend",
+  "version": "1.0.0",
+  "description": "Backend API for CircuitVerse circuit generation using Nemotron VL",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "circuitverse",
+    "nemotron",
+    "nvidia",
+    "ai",
+    "circuit-generation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "openai": "^4.20.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
