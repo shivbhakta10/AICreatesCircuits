@@ -4,6 +4,7 @@
     isReady: false,
     createdElements: {},
     elementIdCounter: 0,
+    isInvertedCircuit: false,  // Flag for circuits with Decoder/Demux
     
     checkReady: function() {
       try {
@@ -39,24 +40,34 @@
         bitWidth: 1,
         inputLength: undefined
       };
-      
+
       // Set direction based on category
       if (category === 'Output') {
         properties.direction = 'LEFT';
       }
-      
+
+      // For inverted circuits (Decoder/Demux), swap Input/Output directions
+      // so their connection nodes face toward the center component
+      if (this.isInvertedCircuit) {
+        if (category === 'Input') {
+          properties.direction = 'LEFT';  // Input's output1 node faces left
+        } else if (category === 'Output') {
+          properties.direction = 'RIGHT'; // Output's inp1 node faces right
+        }
+      }
+
       // Gates with multiple inputs
       const multiInputGates = ['AndGate', 'OrGate', 'NandGate', 'NorGate', 'XorGate', 'XnorGate'];
       if (multiInputGates.includes(elementType)) {
         properties.inputLength = 2;
       }
-      
+
       // Plexers with input count
       const multiInputPlexers = ['Multiplexer', 'Demultiplexer'];
       if (multiInputPlexers.includes(elementType)) {
         properties.inputLength = 2;
       }
-      
+
       return properties;
     },
     
@@ -210,7 +221,32 @@
         
         // Connect nodes (creates wire automatically)
         node1.connect(node2);
-        
+
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    },
+
+    clearCurrentCircuit: function() {
+      try {
+        if (!this.checkReady()) {
+          return { success: false, error: 'CircuitVerse not ready' };
+        }
+
+        // Clear all elements from current scope
+        globalScope.initialize();
+
+        // Reset tracking
+        this.createdElements = {};
+        this.elementIdCounter = 0;
+        this.positions = null;
+
+        // Trigger UI update
+        if (typeof scheduleUpdate === 'function') {
+          scheduleUpdate();
+        }
+
         return { success: true };
       } catch (error) {
         return { success: false, error: error.message };
@@ -255,16 +291,25 @@
     window.dispatchEvent(new CustomEvent('circuitWireConnected', { detail: result }));
   });
   
+  // Components that have inverted node positions (input on right, outputs on left)
+  // These need special handling for proper left-to-right circuit flow
+  const INVERTED_COMPONENTS = ['Decoder', 'Demultiplexer'];
+
   // Analyze circuit and assign layers for organized layout
   function assignCircuitLayers(circuit) {
     const layers = {};
     const elementTypes = {};
-    
+
     // Build element type map
     circuit.elements.forEach(elem => {
       elementTypes[elem.id] = elem.type;
     });
-    
+
+    // Check if circuit contains inverted components
+    const hasInvertedComponent = circuit.elements.some(elem =>
+      INVERTED_COMPONENTS.includes(elem.type)
+    );
+
     // Build dependency graph (what feeds into what)
     const dependencies = {};
     const dependents = {};
@@ -272,7 +317,7 @@
       dependencies[elem.id] = [];
       dependents[elem.id] = [];
     });
-    
+
     if (circuit.connections) {
       circuit.connections.forEach(conn => {
         dependencies[conn.to] = dependencies[conn.to] || [];
@@ -281,12 +326,12 @@
         dependents[conn.from].push(conn.to);
       });
     }
-    
+
     // Assign layers using topological ordering
     const visited = new Set();
     const getLayer = (id) => {
       if (layers[id] !== undefined) return layers[id];
-      
+
       const deps = dependencies[id] || [];
       if (deps.length === 0) {
         // Input elements are at layer 0
@@ -298,17 +343,27 @@
       }
       return layers[id];
     };
-    
+
     circuit.elements.forEach(elem => getLayer(elem.id));
-    
+
+    // For circuits with inverted components (Decoder, Demux), swap input/output positions
+    // These components have input node on RIGHT and output nodes on LEFT
+    // So we need to place: Outputs on LEFT, Component in MIDDLE, Inputs on RIGHT
+    if (hasInvertedComponent) {
+      const maxLayer = Math.max(...Object.values(layers));
+      Object.keys(layers).forEach(id => {
+        layers[id] = maxLayer - layers[id];
+      });
+    }
+
     // Group elements by layer
     const layerGroups = {};
     Object.entries(layers).forEach(([id, layer]) => {
       if (!layerGroups[layer]) layerGroups[layer] = [];
       layerGroups[layer].push(id);
     });
-    
-    return { layers, layerGroups };
+
+    return { layers, layerGroups, hasInvertedComponent };
   }
   
   // Position elements based on their layer
@@ -348,21 +403,31 @@
   window.createCircuitFromJSON = async function(jsonString) {
     try {
       const circuit = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
-      
+
       if (!circuit.elements || !Array.isArray(circuit.elements)) {
         console.error('Invalid circuit JSON: missing or invalid elements array');
         return;
       }
-      
+
+      // Clear existing circuit before creating new one
+      const clearResult = window.__circuitVerseBridge.clearCurrentCircuit();
+      console.log('Cleared existing circuit:', clearResult.success ? 'OK' : clearResult.error);
+
       console.log(`Creating circuit: ${circuit.name || 'Unnamed'}`);
       if (circuit.description) console.log(`Description: ${circuit.description}`);
       
       // Analyze circuit structure and calculate optimal positions
-      const { layers, layerGroups } = assignCircuitLayers(circuit);
+      const { layers, layerGroups, hasInvertedComponent } = assignCircuitLayers(circuit);
       const positions = calculatePositions(circuit, layers, layerGroups);
-      
+
+      if (hasInvertedComponent) {
+        console.log('Circuit contains inverted components (Decoder/Demux) - using reversed layout');
+      }
       console.log('Circuit layers:', layerGroups);
-      
+
+      // Set inverted circuit flag so Input/Output directions are swapped
+      window.__circuitVerseBridge.isInvertedCircuit = hasInvertedComponent;
+
       // Temporarily disable automatic positioning
       const originalGetNextPosition = window.__circuitVerseBridge.getNextPosition;
       let customPositionOverride = null;
@@ -444,12 +509,16 @@
         menuItemClicked(7);
         console.log('✓ View centered');
       }
-      
+
+      // Reset inverted circuit flag
+      window.__circuitVerseBridge.isInvertedCircuit = false;
+
       console.log(`✓ Circuit "${circuit.name || 'Unnamed'}" created successfully!`);
       return { success: true, elementMap };
-      
+
     } catch (error) {
       console.error('Error creating circuit from JSON:', error);
+      window.__circuitVerseBridge.isInvertedCircuit = false;  // Reset on error too
       return { success: false, error: error.message };
     }
   };

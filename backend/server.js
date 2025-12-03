@@ -99,13 +99,20 @@ app.post('/api/generate-circuit', async (req, res) => {
 
 Generate a CircuitVerse circuit JSON definition for: ${description}
 
-Requirements:
-- Use element types from: Input, AndGate, OrGate, NotGate, XorGate, NandGate, NorGate, XnorGate, Output, etc.
-- Label all inputs as A, B, C, etc.
-- Label all gates with their type (AND, OR, etc.) and set labelDirection to "UP"
-- Label outputs meaningfully
-- Use snake_case for element IDs
-- Define all connections with correct node names
+CRITICAL REQUIREMENTS:
+1. **USE PRE-BUILT COMPONENTS** when available:
+   - For adders/addition: use "Adder" (nodes: inpA, inpB, carryIn -> sum, carryOut)
+   - For ALU/arithmetic: use "ALU" (nodes: inp1, inp2, controlSignalInput -> output, carryOut)
+   - For mux/selection: use "Multiplexer" (nodes: inp[0], inp[1], ..., controlSignalInput -> output1)
+   - For demux: use "Demultiplexer" (nodes: input, controlSignalInput -> output1[0], output1[1], ...)
+   - For flip-flops: use DflipFlop, TflipFlop, etc.
+   - ONLY use basic gates (AndGate, OrGate, etc.) for custom logic or when explicitly requested
+
+2. Use EXACT node names from the documentation
+3. Set bitWidth property for multi-bit signals (must match on connected elements)
+4. Label inputs as A, B, C and outputs meaningfully (SUM, CARRY, RESULT, Q, etc.)
+5. Set labelDirection to "UP" for all components
+6. Use snake_case for element IDs
 
 Return ONLY the JSON without any markdown formatting or explanations.`;
 

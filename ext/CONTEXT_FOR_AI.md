@@ -2,54 +2,28 @@
 
 This document provides context for Large Language Models (LLMs) to generate circuit definitions in JSON format that can be automatically created and wired in CircuitVerse using the Chrome extension.
 
-## Overview
+## CRITICAL: Use Pre-Built Components!
 
-The CircuitVerse Circuit Builder Chrome Extension can automatically create and wire circuit elements. AI models can generate JSON definitions that describe circuits, which are then executed by the `createCircuitFromJSON()` function.
+**ALWAYS use pre-built components instead of building from basic gates when available.**
 
-## Available Elements
+| User Request | USE THIS | NOT This |
+|--------------|----------|----------|
+| "full adder", "adder", "add numbers" | `Adder` component | XOR + AND + OR gates |
+| "subtract", "ALU", "arithmetic" | `ALU` component | Multiple gates |
+| "multiply" | `verilogMultiplier` | Shift-and-add circuits |
+| "mux", "select", "choose input" | `Multiplexer` | Gate-based selector |
+| "demux", "route to output" | `Demultiplexer` | Multiple AND gates |
+| "decoder" | `Decoder` | Gate-based decoder |
+| "D flip-flop", "register" | `DflipFlop` | NOR gate latch |
+| "counter" | `Counter` | Cascaded flip-flops |
+| "memory", "RAM" | `RAM` | Array of flip-flops |
 
-### Input Elements
-- `Input` - Basic input (default direction: RIGHT)
-- `Button` - Push button input
-- `Power` - Constant 1
-- `Ground` - Constant 0
-- `ConstantVal` - Configurable constant
-- `Stepper` - Step through values
-- `Random` - Random value generator
-- `Counter` - Counter element
+**Only use basic gates (AndGate, OrGate, etc.) when:**
+- User explicitly asks for gate-level implementation
+- Custom logic expressions (e.g., "A AND B OR C")
+- Educational circuits showing how components work internally
 
-### Logic Gates (default direction: RIGHT, default inputLength: 2)
-- `AndGate` - AND gate (supports 2+ inputs)
-- `OrGate` - OR gate (supports 2+ inputs)
-- `NotGate` - NOT gate (single input only)
-- `NandGate` - NAND gate (supports 2+ inputs)
-- `NorGate` - NOR gate (supports 2+ inputs)
-- `XorGate` - XOR gate (supports 2+ inputs)
-- `XnorGate` - XNOR gate (supports 2+ inputs)
-
-**Important**: Most gates support MORE than 2 inputs! Use the `inputLength` property to specify how many inputs the gate should have. For example, a 3-input AND gate would have nodes `inp[0]`, `inp[1]`, and `inp[2]`.
-
-### Output Elements (default direction: LEFT)
-- `Output` - Basic output display
-- `DigitalLed` - LED display
-- `RGBLed` - RGB LED
-- `SquareRGBLed` - Square RGB LED
-- `HexDisplay` - Hexadecimal display
-- `SevenSegDisplay` - 7-segment display
-- `SixteenSegDisplay` - 16-segment display
-
-### Other Elements
-- `Multiplexer` - MUX (default inputLength: 2)
-- `Demultiplexer` - DEMUX (default inputLength: 2)
-- `Splitter` - Signal splitter
-- `Adder` - Adder circuit
-- `Clock` - Clock signal
-- `DflipFlop` - D Flip-flop
-- `TflipFlop` - T Flip-flop
-- `JKflipFlop` - JK Flip-flop
-- `SRflipFlop` - SR Flip-flop
-- `RAM` - RAM module
-- `ROM` - ROM module
+---
 
 ## JSON Circuit Definition Schema
 
@@ -61,537 +35,468 @@ The CircuitVerse Circuit Builder Chrome Extension can automatically create and w
     {
       "id": "unique_element_id",
       "type": "ElementType",
-      "label": "Label Text (optional)",
-      "labelDirection": "UP|DOWN|LEFT|RIGHT (optional, default varies by element)",
+      "label": "Label Text",
+      "labelDirection": "UP|DOWN|LEFT|RIGHT",
       "properties": {
-        "inputLength": 2,
-        "bitWidth": 1
+        "bitWidth": 1,
+        "inputLength": 2
       }
     }
   ],
   "connections": [
     {
       "from": "source_element_id",
-      "fromNode": "output1 or inp[0] etc",
+      "fromNode": "output_node_name",
       "to": "target_element_id",
-      "toNode": "inp1 or inp[0] etc"
+      "toNode": "input_node_name"
     }
   ]
 }
 ```
 
-## Element Node Reference
+---
 
-### Common Output Nodes
-- **Input elements**: `output1` - Main output node
-- **Gates**: `output1` - Output of the gate
-- **Flip-flops**: `qOutput`, `qInvOutput` - Q and Q̄ outputs
+## Complete Component Reference
 
-### Common Input Nodes
-- **Output elements**: `inp1` - Main input node
-- **Gates with multiple inputs**: `inp[0]`, `inp[1]`, `inp[2]`, etc.
-- **NotGate**: `inp1` - Single input
-- **Flip-flops**: Various (D, T, J, K, S, R, clock, etc.)
+### INPUT COMPONENTS
 
-### Determining Node Names
-To find exact node names for any element, refer to:
-`CircuitVerse-master/simulator/src/modules/<ElementType>.js`
+| Component | Type | Output Node | Properties | Description |
+|-----------|------|-------------|------------|-------------|
+| Input | `Input` | `output1` | `bitWidth` (default: 1) | Standard input pin |
+| Button | `Button` | `output1` | - | Push button (momentary) |
+| Power | `Power` | `output1` | - | Constant HIGH (1) |
+| Ground | `Ground` | `output1` | - | Constant LOW (0) |
+| ConstantVal | `ConstantVal` | `output1` | `bitWidth`, `value` | User-defined constant |
+| Stepper | `Stepper` | `output1` | `bitWidth` | Step through values |
+| Random | `Random` | `output1` | `bitWidth` | Random value generator |
+| Counter | `Counter` | `output1` | `bitWidth` | Incrementing counter |
 
-Common patterns:
-- Single input elements: `inp1`
-- Multiple input elements: `inp` array indexed as `inp[0]`, `inp[1]`, etc.
-- Single output elements: `output1`
-- Flip-flops with Q outputs: `qOutput`, `qInvOutput`
+### OUTPUT COMPONENTS
 
-## Label Guidelines
+| Component | Type | Input Node | Properties | Description |
+|-----------|------|------------|------------|-------------|
+| Output | `Output` | `inp1` | `bitWidth` (default: 1) | Standard output display |
+| DigitalLed | `DigitalLed` | `inp1` | - | Single LED indicator |
+| RGBLed | `RGBLed` | `inp[0]`, `inp[1]`, `inp[2]` | - | RGB LED (R, G, B inputs) |
+| SquareRGBLed | `SquareRGBLed` | `inp[0]`, `inp[1]`, `inp[2]` | - | Square RGB LED |
+| HexDisplay | `HexDisplay` | `inp1` | - | Hexadecimal display |
+| SevenSegDisplay | `SevenSegDisplay` | `a`-`g`, `dp` | - | 7-segment display |
+| SixteenSegDisplay | `SixteenSegDisplay` | multiple | - | 16-segment display |
+| VariableLed | `VariableLed` | `inp1` | - | Variable brightness LED |
 
-### Input Elements
-- Use alphabetic labels: A, B, C, D, etc.
-- Keep labels short (1-3 characters)
+### LOGIC GATES
 
-### Gates
-- Use simple gate type labels: AND, OR, NOT, NAND, NOR, XOR, XNOR
-- **DO NOT add numbers** to gate labels (use "OR", not "OR1", "OR2", etc.)
-- If multiple gates of same type exist, they all get the same label (e.g., all OR gates labeled "OR")
-- Set `labelDirection` to "UP" for gates (displays above the element)
+| Component | Type | Input Nodes | Output Node | Properties |
+|-----------|------|-------------|-------------|------------|
+| AND Gate | `AndGate` | `inp[0]`, `inp[1]`, ... | `output1` | `inputLength` (2-10), `bitWidth` |
+| OR Gate | `OrGate` | `inp[0]`, `inp[1]`, ... | `output1` | `inputLength` (2-10), `bitWidth` |
+| NOT Gate | `NotGate` | `inp1` | `output1` | `bitWidth` |
+| NAND Gate | `NandGate` | `inp[0]`, `inp[1]`, ... | `output1` | `inputLength` (2-10), `bitWidth` |
+| NOR Gate | `NorGate` | `inp[0]`, `inp[1]`, ... | `output1` | `inputLength` (2-10), `bitWidth` |
+| XOR Gate | `XorGate` | `inp[0]`, `inp[1]`, ... | `output1` | `inputLength` (2-10), `bitWidth` |
+| XNOR Gate | `XnorGate` | `inp[0]`, `inp[1]`, ... | `output1` | `inputLength` (2-10), `bitWidth` |
 
-### Output Elements
-- Use result labels: X only
-- Or descriptive: SUM, CARRY, DIFF, etc.
+**Note**: Multi-input gates use array notation: `inp[0]`, `inp[1]`, `inp[2]`, etc.
 
-### Label Direction
-- **UP**: Best for gates (label appears above)
-- **RIGHT**: Default for most elements
-- **LEFT**: Good for outputs on right side
-- **DOWN**: Good for elements with vertical space
+### DECODERS & MULTIPLEXERS
 
-## Example JSON Circuits
+| Component | Type | Input Nodes | Output Nodes | Properties |
+|-----------|------|-------------|--------------|------------|
+| Multiplexer | `Multiplexer` | `inp[0]`, `inp[1]`, ..., `controlSignalInput` | `output1` | `controlSignalSize` (1-10), `bitWidth` |
+| Demultiplexer | `Demultiplexer` | `input`, `controlSignalInput` | `output1[0]`, `output1[1]`, ... | `controlSignalSize`, `bitWidth` |
+| Decoder | `Decoder` | `input` | `output1[0]`, `output1[1]`, ... | `bitWidth` (determines outputs: 2^bitWidth) |
+| PriorityEncoder | `PriorityEncoder` | `inp[0]`, `inp[1]`, ... | `output` | `bitWidth` |
+| BitSelector | `BitSelector` | `inp`, `sel` | `output1` | `bitWidth` |
+| MSB | `MSB` | `inp` | `output1` | `bitWidth` |
+| LSB | `LSB` | `inp` | `output1` | `bitWidth` |
 
-### Example 1: Simple AND Gate
+**Important - Decoder/Demultiplexer Positioning:**
+- The extension automatically handles proper positioning for Decoder and Demultiplexer
+- For these components, Input elements are placed on the RIGHT and Output elements on the LEFT
+- This matches how CircuitVerse draws these components (input node on right side, output nodes on left side)
+- No special properties needed - just define connections normally
+
+**Decoder Details:**
+- `bitWidth` determines the input size and number of outputs
+- bitWidth=1 → 1-bit input, 2 outputs (output1[0], output1[1]) - 1:2 decoder
+- bitWidth=2 → 2-bit input, 4 outputs (output1[0] to output1[3]) - 2:4 decoder
+- bitWidth=3 → 3-bit input, 8 outputs (output1[0] to output1[7]) - 3:8 decoder
+- Formula: outputs = 2^bitWidth
+
+**Multiplexer Details:**
+- `controlSignalSize` determines number of data inputs: 2^controlSignalSize inputs
+- controlSignalSize=1 → 2 inputs (inp[0], inp[1])
+- controlSignalSize=2 → 4 inputs (inp[0], inp[1], inp[2], inp[3])
+
+### SEQUENTIAL ELEMENTS
+
+| Component | Type | Input Nodes | Output Nodes | Properties |
+|-----------|------|-------------|--------------|------------|
+| D Flip-Flop | `DflipFlop` | `dInp`, `clockInp`, `reset`, `preset`, `en` | `qOutput`, `qInvOutput` | `bitWidth` |
+| T Flip-Flop | `TflipFlop` | `tInp`, `clockInp`, `reset`, `preset`, `en` | `qOutput`, `qInvOutput` | `bitWidth` |
+| JK Flip-Flop | `JKflipFlop` | `jInp`, `kInp`, `clockInp`, `reset`, `preset`, `en` | `qOutput`, `qInvOutput` | `bitWidth` |
+| SR Flip-Flop | `SRflipFlop` | `sInp`, `rInp`, `clockInp`, `reset`, `preset`, `en` | `qOutput`, `qInvOutput` | `bitWidth` |
+| D Latch | `Dlatch` | `dInp`, `en` | `qOutput`, `qInvOutput` | `bitWidth` |
+| Clock | `Clock` | - | `output1` | - |
+
+### MEMORY COMPONENTS
+
+| Component | Type | Input Nodes | Output Nodes | Properties |
+|-----------|------|-------------|--------------|------------|
+| RAM | `RAM` | `address`, `dataIn`, `write`, `reset`, `coreDump` | `dataOut` | `addressWidth` (1-20), `bitWidth` (1-32) |
+| ROM | `ROM` | `address` | `dataOut` | `addressWidth`, `bitWidth` |
+| EEPROM | `EEPROM` | `address`, `dataIn`, `write` | `dataOut` | `addressWidth`, `bitWidth` |
+
+### ARITHMETIC COMPONENTS (USE THESE!)
+
+#### Adder (IMPORTANT - Use for addition!)
+| Property | Value |
+|----------|-------|
+| Type | `Adder` |
+| Input Nodes | `inpA` (n-bit), `inpB` (n-bit), `carryIn` (1-bit) |
+| Output Nodes | `sum` (n-bit), `carryOut` (1-bit) |
+| Properties | `bitWidth` (default: 1) |
+
+**Example - Full Adder using Adder component:**
+```json
+{
+  "name": "Full Adder",
+  "description": "Full adder using pre-built Adder component",
+  "elements": [
+    {"id": "input_a", "type": "Input", "label": "A"},
+    {"id": "input_b", "type": "Input", "label": "B"},
+    {"id": "input_cin", "type": "Input", "label": "CIN"},
+    {"id": "adder", "type": "Adder", "label": "ADDER", "labelDirection": "UP"},
+    {"id": "output_sum", "type": "Output", "label": "SUM"},
+    {"id": "output_cout", "type": "Output", "label": "COUT"}
+  ],
+  "connections": [
+    {"from": "input_a", "fromNode": "output1", "to": "adder", "toNode": "inpA"},
+    {"from": "input_b", "fromNode": "output1", "to": "adder", "toNode": "inpB"},
+    {"from": "input_cin", "fromNode": "output1", "to": "adder", "toNode": "carryIn"},
+    {"from": "adder", "fromNode": "sum", "to": "output_sum", "toNode": "inp1"},
+    {"from": "adder", "fromNode": "carryOut", "to": "output_cout", "toNode": "inp1"}
+  ]
+}
+```
+
+#### ALU (Arithmetic Logic Unit)
+| Property | Value |
+|----------|-------|
+| Type | `ALU` |
+| Input Nodes | `inp1` (A), `inp2` (B), `controlSignalInput` (3-bit) |
+| Output Nodes | `output` (result), `carryOut` |
+| Properties | `bitWidth` (default: 1) |
+
+**ALU Control Codes:**
+| Control | Operation |
+|---------|-----------|
+| 0 | A & B (AND) |
+| 1 | A \| B (OR) |
+| 2 | A + B (ADD) |
+| 4 | A & ~B |
+| 5 | A \| ~B |
+| 6 | A - B (SUBTRACT) |
+| 7 | A < B (Set Less Than) |
+
+#### Other Arithmetic Components
+| Component | Type | Input Nodes | Output Nodes | Properties |
+|-----------|------|-------------|--------------|------------|
+| Two's Complement | `TwoComplement` | `inp` | `output1` | `bitWidth` |
+| Multiplier | `verilogMultiplier` | `inp1`, `inp2` | `product` | `bitWidth` |
+| Divider | `verilogDivider` | `inp1`, `inp2` | `quotient`, `remainder` | `bitWidth` |
+| Power | `verilogPower` | `inp1`, `inp2` | `output` | `bitWidth` |
+| Shift Left | `verilogShiftLeft` | `inp`, `shiftAmt` | `output` | `bitWidth` |
+| Shift Right | `verilogShiftRight` | `inp`, `shiftAmt` | `output` | `bitWidth` |
+
+### UTILITY COMPONENTS
+
+| Component | Type | Input Nodes | Output Nodes | Properties |
+|-----------|------|-------------|--------------|------------|
+| Buffer | `Buffer` | `inp1` | `output1` | `bitWidth` |
+| Tri-State | `TriState` | `inp`, `enable` | `output1` | `bitWidth` |
+| Controlled Inverter | `ControlledInverter` | `inp`, `control` | `output1` | `bitWidth` |
+| Splitter | `Splitter` | varies | varies | `bitWidth`, `bitWidthSplit` |
+| Tunnel | `Tunnel` | `inp1` | `output1` | `identifier` |
+| Flag | `Flag` | `inp1` | - | - |
+
+### ANNOTATION COMPONENTS
+
+| Component | Type | Description |
+|-----------|------|-------------|
+| Text | `Text` | Add text labels |
+| Rectangle | `Rectangle` | Visual grouping |
+| Arrow | `Arrow` | Visual indicators |
+| ImageAnnotation | `ImageAnnotation` | Embed images |
+
+---
+
+## Multi-Bit Circuit Examples
+
+### Example: 4-bit Adder
+```json
+{
+  "name": "4-bit Adder",
+  "description": "Adds two 4-bit numbers with carry",
+  "elements": [
+    {"id": "input_a", "type": "Input", "label": "A", "properties": {"bitWidth": 4}},
+    {"id": "input_b", "type": "Input", "label": "B", "properties": {"bitWidth": 4}},
+    {"id": "input_cin", "type": "Input", "label": "CIN"},
+    {"id": "adder", "type": "Adder", "label": "ADDER", "labelDirection": "UP", "properties": {"bitWidth": 4}},
+    {"id": "output_sum", "type": "Output", "label": "SUM", "properties": {"bitWidth": 4}},
+    {"id": "output_cout", "type": "Output", "label": "COUT"}
+  ],
+  "connections": [
+    {"from": "input_a", "fromNode": "output1", "to": "adder", "toNode": "inpA"},
+    {"from": "input_b", "fromNode": "output1", "to": "adder", "toNode": "inpB"},
+    {"from": "input_cin", "fromNode": "output1", "to": "adder", "toNode": "carryIn"},
+    {"from": "adder", "fromNode": "sum", "to": "output_sum", "toNode": "inp1"},
+    {"from": "adder", "fromNode": "carryOut", "to": "output_cout", "toNode": "inp1"}
+  ]
+}
+```
+
+### Example: 4:1 Multiplexer
+```json
+{
+  "name": "4:1 Multiplexer",
+  "description": "Selects one of 4 inputs based on 2-bit control signal",
+  "elements": [
+    {"id": "input_0", "type": "Input", "label": "D0"},
+    {"id": "input_1", "type": "Input", "label": "D1"},
+    {"id": "input_2", "type": "Input", "label": "D2"},
+    {"id": "input_3", "type": "Input", "label": "D3"},
+    {"id": "sel", "type": "Input", "label": "SEL", "properties": {"bitWidth": 2}},
+    {"id": "mux", "type": "Multiplexer", "label": "MUX", "labelDirection": "UP", "properties": {"controlSignalSize": 2}},
+    {"id": "output", "type": "Output", "label": "Y"}
+  ],
+  "connections": [
+    {"from": "input_0", "fromNode": "output1", "to": "mux", "toNode": "inp[0]"},
+    {"from": "input_1", "fromNode": "output1", "to": "mux", "toNode": "inp[1]"},
+    {"from": "input_2", "fromNode": "output1", "to": "mux", "toNode": "inp[2]"},
+    {"from": "input_3", "fromNode": "output1", "to": "mux", "toNode": "inp[3]"},
+    {"from": "sel", "fromNode": "output1", "to": "mux", "toNode": "controlSignalInput"},
+    {"from": "mux", "fromNode": "output1", "to": "output", "toNode": "inp1"}
+  ]
+}
+```
+
+### Example: ALU Circuit (Addition)
+```json
+{
+  "name": "ALU Addition",
+  "description": "ALU performing A + B (control=2)",
+  "elements": [
+    {"id": "input_a", "type": "Input", "label": "A", "properties": {"bitWidth": 4}},
+    {"id": "input_b", "type": "Input", "label": "B", "properties": {"bitWidth": 4}},
+    {"id": "ctrl", "type": "ConstantVal", "label": "CTRL", "properties": {"bitWidth": 3}},
+    {"id": "alu", "type": "ALU", "label": "ALU", "labelDirection": "UP", "properties": {"bitWidth": 4}},
+    {"id": "output_result", "type": "Output", "label": "RESULT", "properties": {"bitWidth": 4}},
+    {"id": "output_carry", "type": "Output", "label": "CARRY"}
+  ],
+  "connections": [
+    {"from": "input_a", "fromNode": "output1", "to": "alu", "toNode": "inp1"},
+    {"from": "input_b", "fromNode": "output1", "to": "alu", "toNode": "inp2"},
+    {"from": "ctrl", "fromNode": "output1", "to": "alu", "toNode": "controlSignalInput"},
+    {"from": "alu", "fromNode": "output", "to": "output_result", "toNode": "inp1"},
+    {"from": "alu", "fromNode": "carryOut", "to": "output_carry", "toNode": "inp1"}
+  ]
+}
+```
+
+### Example: D Flip-Flop with Clock
+```json
+{
+  "name": "D Flip-Flop",
+  "description": "D Flip-Flop with clock input",
+  "elements": [
+    {"id": "input_d", "type": "Input", "label": "D"},
+    {"id": "clock", "type": "Clock", "label": "CLK"},
+    {"id": "dff", "type": "DflipFlop", "label": "DFF", "labelDirection": "UP"},
+    {"id": "output_q", "type": "Output", "label": "Q"},
+    {"id": "output_qbar", "type": "Output", "label": "Q'"}
+  ],
+  "connections": [
+    {"from": "input_d", "fromNode": "output1", "to": "dff", "toNode": "dInp"},
+    {"from": "clock", "fromNode": "output1", "to": "dff", "toNode": "clockInp"},
+    {"from": "dff", "fromNode": "qOutput", "to": "output_q", "toNode": "inp1"},
+    {"from": "dff", "fromNode": "qInvOutput", "to": "output_qbar", "toNode": "inp1"}
+  ]
+}
+```
+
+### Example: 2:4 Decoder
+```json
+{
+  "name": "2:4 Decoder",
+  "description": "2-bit input to 4-line output decoder",
+  "elements": [
+    {"id": "input_sel", "type": "Input", "label": "SEL", "properties": {"bitWidth": 2}},
+    {"id": "decoder", "type": "Decoder", "label": "DEC", "labelDirection": "UP", "properties": {"bitWidth": 2}},
+    {"id": "output_0", "type": "Output", "label": "Y0"},
+    {"id": "output_1", "type": "Output", "label": "Y1"},
+    {"id": "output_2", "type": "Output", "label": "Y2"},
+    {"id": "output_3", "type": "Output", "label": "Y3"}
+  ],
+  "connections": [
+    {"from": "input_sel", "fromNode": "output1", "to": "decoder", "toNode": "input"},
+    {"from": "decoder", "fromNode": "output1[0]", "to": "output_0", "toNode": "inp1"},
+    {"from": "decoder", "fromNode": "output1[1]", "to": "output_1", "toNode": "inp1"},
+    {"from": "decoder", "fromNode": "output1[2]", "to": "output_2", "toNode": "inp1"},
+    {"from": "decoder", "fromNode": "output1[3]", "to": "output_3", "toNode": "inp1"}
+  ]
+}
+```
+
+---
+
+## Basic Gate Examples (Use only when necessary)
+
+### Example: Simple AND Gate
 ```json
 {
   "name": "Simple AND Gate",
-  "description": "Two inputs connected to an AND gate with output",
+  "description": "Two inputs connected to an AND gate",
   "elements": [
-    {
-      "id": "input_a",
-      "type": "Input",
-      "label": "A"
-    },
-    {
-      "id": "input_b",
-      "type": "Input",
-      "label": "B"
-    },
-    {
-      "id": "and_gate",
-      "type": "AndGate",
-      "label": "AND",
-      "labelDirection": "UP"
-    },
-    {
-      "id": "output_x",
-      "type": "Output",
-      "label": "X"
-    }
+    {"id": "input_a", "type": "Input", "label": "A"},
+    {"id": "input_b", "type": "Input", "label": "B"},
+    {"id": "and_gate", "type": "AndGate", "label": "AND", "labelDirection": "UP"},
+    {"id": "output_x", "type": "Output", "label": "X"}
   ],
   "connections": [
-    {
-      "from": "input_a",
-      "fromNode": "output1",
-      "to": "and_gate",
-      "toNode": "inp[0]"
-    },
-    {
-      "from": "input_b",
-      "fromNode": "output1",
-      "to": "and_gate",
-      "toNode": "inp[1]"
-    },
-    {
-      "from": "and_gate",
-      "fromNode": "output1",
-      "to": "output_x",
-      "toNode": "inp1"
-    }
+    {"from": "input_a", "fromNode": "output1", "to": "and_gate", "toNode": "inp[0]"},
+    {"from": "input_b", "fromNode": "output1", "to": "and_gate", "toNode": "inp[1]"},
+    {"from": "and_gate", "fromNode": "output1", "to": "output_x", "toNode": "inp1"}
   ]
 }
 ```
 
-### Example 2: Half Adder
+### Example: 3-Input AND Gate
 ```json
 {
-  "name": "Half Adder",
-  "description": "Adds two single-bit binary numbers, producing sum and carry",
+  "name": "3-Input AND Gate",
+  "description": "Three inputs connected to a single AND gate",
   "elements": [
-    {
-      "id": "input_a",
-      "type": "Input",
-      "label": "A"
-    },
-    {
-      "id": "input_b",
-      "type": "Input",
-      "label": "B"
-    },
-    {
-      "id": "xor_sum",
-      "type": "XorGate",
-      "label": "XOR",
-      "labelDirection": "UP"
-    },
-    {
-      "id": "and_carry",
-      "type": "AndGate",
-      "label": "AND",
-      "labelDirection": "UP"
-    },
-    {
-      "id": "output_sum",
-      "type": "Output",
-      "label": "SUM"
-    },
-    {
-      "id": "output_carry",
-      "type": "Output",
-      "label": "CARRY"
-    }
+    {"id": "input_a", "type": "Input", "label": "A"},
+    {"id": "input_b", "type": "Input", "label": "B"},
+    {"id": "input_c", "type": "Input", "label": "C"},
+    {"id": "and_gate", "type": "AndGate", "label": "AND", "labelDirection": "UP", "properties": {"inputLength": 3}},
+    {"id": "output_x", "type": "Output", "label": "X"}
   ],
   "connections": [
-    {
-      "from": "input_a",
-      "fromNode": "output1",
-      "to": "xor_sum",
-      "toNode": "inp[0]"
-    },
-    {
-      "from": "input_b",
-      "fromNode": "output1",
-      "to": "xor_sum",
-      "toNode": "inp[1]"
-    },
-    {
-      "from": "input_a",
-      "fromNode": "output1",
-      "to": "and_carry",
-      "toNode": "inp[0]"
-    },
-    {
-      "from": "input_b",
-      "fromNode": "output1",
-      "to": "and_carry",
-      "toNode": "inp[1]"
-    },
-    {
-      "from": "xor_sum",
-      "fromNode": "output1",
-      "to": "output_sum",
-      "toNode": "inp1"
-    },
-    {
-      "from": "and_carry",
-      "fromNode": "output1",
-      "to": "output_carry",
-      "toNode": "inp1"
-    }
+    {"from": "input_a", "fromNode": "output1", "to": "and_gate", "toNode": "inp[0]"},
+    {"from": "input_b", "fromNode": "output1", "to": "and_gate", "toNode": "inp[1]"},
+    {"from": "input_c", "fromNode": "output1", "to": "and_gate", "toNode": "inp[2]"},
+    {"from": "and_gate", "fromNode": "output1", "to": "output_x", "toNode": "inp1"}
   ]
 }
 ```
 
-### Example 3: Multi-Input Gate - (A+B)*(C+D)*(E+F)
+### Example: Half Adder (Gate-Level - only if explicitly requested)
 ```json
 {
-  "name": "Product of Three Sums",
-  "description": "Computes (A+B)*(C+D)*(E+F) using one 3-input AND gate",
+  "name": "Half Adder (Gate-Level)",
+  "description": "Half adder using XOR and AND gates - use only if gate-level is requested",
   "elements": [
-    {
-      "id": "input_a",
-      "type": "Input",
-      "label": "A"
-    },
-    {
-      "id": "input_b",
-      "type": "Input",
-      "label": "B"
-    },
-    {
-      "id": "input_c",
-      "type": "Input",
-      "label": "C"
-    },
-    {
-      "id": "input_d",
-      "type": "Input",
-      "label": "D"
-    },
-    {
-      "id": "input_e",
-      "type": "Input",
-      "label": "E"
-    },
-    {
-      "id": "input_f",
-      "type": "Input",
-      "label": "F"
-    },
-    {
-      "id": "or_ab",
-      "type": "OrGate",
-      "label": "OR",
-      "labelDirection": "UP"
-    },
-    {
-      "id": "or_cd",
-      "type": "OrGate",
-      "label": "OR",
-      "labelDirection": "UP"
-    },
-    {
-      "id": "or_ef",
-      "type": "OrGate",
-      "label": "OR",
-      "labelDirection": "UP"
-    },
-    {
-      "id": "and_gate",
-      "type": "AndGate",
-      "label": "AND",
-      "labelDirection": "UP",
-      "properties": {
-        "inputLength": 3
-      }
-    },
-    {
-      "id": "output_result",
-      "type": "Output",
-      "label": "RESULT"
-    }
+    {"id": "input_a", "type": "Input", "label": "A"},
+    {"id": "input_b", "type": "Input", "label": "B"},
+    {"id": "xor_sum", "type": "XorGate", "label": "XOR", "labelDirection": "UP"},
+    {"id": "and_carry", "type": "AndGate", "label": "AND", "labelDirection": "UP"},
+    {"id": "output_sum", "type": "Output", "label": "SUM"},
+    {"id": "output_carry", "type": "Output", "label": "CARRY"}
   ],
   "connections": [
-    {
-      "from": "input_a",
-      "fromNode": "output1",
-      "to": "or_ab",
-      "toNode": "inp[0]"
-    },
-    {
-      "from": "input_b",
-      "fromNode": "output1",
-      "to": "or_ab",
-      "toNode": "inp[1]"
-    },
-    {
-      "from": "input_c",
-      "fromNode": "output1",
-      "to": "or_cd",
-      "toNode": "inp[0]"
-    },
-    {
-      "from": "input_d",
-      "fromNode": "output1",
-      "to": "or_cd",
-      "toNode": "inp[1]"
-    },
-    {
-      "from": "input_e",
-      "fromNode": "output1",
-      "to": "or_ef",
-      "toNode": "inp[0]"
-    },
-    {
-      "from": "input_f",
-      "fromNode": "output1",
-      "to": "or_ef",
-      "toNode": "inp[1]"
-    },
-    {
-      "from": "or_ab",
-      "fromNode": "output1",
-      "to": "and_gate",
-      "toNode": "inp[0]"
-    },
-    {
-      "from": "or_cd",
-      "fromNode": "output1",
-      "to": "and_gate",
-      "toNode": "inp[1]"
-    },
-    {
-      "from": "or_ef",
-      "fromNode": "output1",
-      "to": "and_gate",
-      "toNode": "inp[2]"
-    },
-    {
-      "from": "and_gate",
-      "fromNode": "output1",
-      "to": "output_result",
-      "toNode": "inp1"
-    }
+    {"from": "input_a", "fromNode": "output1", "to": "xor_sum", "toNode": "inp[0]"},
+    {"from": "input_b", "fromNode": "output1", "to": "xor_sum", "toNode": "inp[1]"},
+    {"from": "input_a", "fromNode": "output1", "to": "and_carry", "toNode": "inp[0]"},
+    {"from": "input_b", "fromNode": "output1", "to": "and_carry", "toNode": "inp[1]"},
+    {"from": "xor_sum", "fromNode": "output1", "to": "output_sum", "toNode": "inp1"},
+    {"from": "and_carry", "fromNode": "output1", "to": "output_carry", "toNode": "inp1"}
   ]
 }
 ```
 
-### Example 4: SR Latch
+### Example: SR Latch (Gate-Level)
 ```json
 {
   "name": "SR Latch",
   "description": "Set-Reset latch using NOR gates",
   "elements": [
-    {
-      "id": "input_s",
-      "type": "Input",
-      "label": "S"
-    },
-    {
-      "id": "input_r",
-      "type": "Input",
-      "label": "R"
-    },
-    {
-      "id": "nor1",
-      "type": "NorGate",
-      "label": "NOR1",
-      "labelDirection": "UP"
-    },
-    {
-      "id": "nor2",
-      "type": "NorGate",
-      "label": "NOR2",
-      "labelDirection": "UP"
-    },
-    {
-      "id": "output_q",
-      "type": "Output",
-      "label": "Q"
-    },
-    {
-      "id": "output_qbar",
-      "type": "Output",
-      "label": "Q̄"
-    }
+    {"id": "input_s", "type": "Input", "label": "S"},
+    {"id": "input_r", "type": "Input", "label": "R"},
+    {"id": "nor1", "type": "NorGate", "label": "NOR", "labelDirection": "UP"},
+    {"id": "nor2", "type": "NorGate", "label": "NOR", "labelDirection": "UP"},
+    {"id": "output_q", "type": "Output", "label": "Q"},
+    {"id": "output_qbar", "type": "Output", "label": "Q'"}
   ],
   "connections": [
-    {
-      "from": "input_s",
-      "fromNode": "output1",
-      "to": "nor1",
-      "toNode": "inp[0]"
-    },
-    {
-      "from": "nor2",
-      "fromNode": "output1",
-      "to": "nor1",
-      "toNode": "inp[1]"
-    },
-    {
-      "from": "input_r",
-      "fromNode": "output1",
-      "to": "nor2",
-      "toNode": "inp[0]"
-    },
-    {
-      "from": "nor1",
-      "fromNode": "output1",
-      "to": "nor2",
-      "toNode": "inp[1]"
-    },
-    {
-      "from": "nor1",
-      "fromNode": "output1",
-      "to": "output_q",
-      "toNode": "inp1"
-    },
-    {
-      "from": "nor2",
-      "fromNode": "output1",
-      "to": "output_qbar",
-      "toNode": "inp1"
-    }
+    {"from": "input_s", "fromNode": "output1", "to": "nor1", "toNode": "inp[0]"},
+    {"from": "nor2", "fromNode": "output1", "to": "nor1", "toNode": "inp[1]"},
+    {"from": "input_r", "fromNode": "output1", "to": "nor2", "toNode": "inp[0]"},
+    {"from": "nor1", "fromNode": "output1", "to": "nor2", "toNode": "inp[1]"},
+    {"from": "nor1", "fromNode": "output1", "to": "output_q", "toNode": "inp1"},
+    {"from": "nor2", "fromNode": "output1", "to": "output_qbar", "toNode": "inp1"}
   ]
 }
 ```
 
+---
+
 ## Rules for AI Circuit Generation
 
-1. **Element IDs**: Use descriptive snake_case IDs (e.g., `input_a`, `and_gate_1`, `output_sum`)
+1. **USE PRE-BUILT COMPONENTS** - Always prefer Adder, ALU, Multiplexer, etc. over gate-level implementations
 
-2. **Input Ordering**: For gates with multiple inputs:
-   - First input: `inp[0]`
-   - Second input: `inp[1]`
-   - Third input: `inp[2]`, etc.
+2. **Element IDs**: Use descriptive snake_case IDs (e.g., `input_a`, `adder_1`, `output_sum`)
 
-3. **Labels**: 
-   - Always provide labels for inputs and outputs
-   - Label gates with their type only (AND, OR, XOR, etc.)
-   - DO NOT add numbers to gate labels (use "OR", not "OR1")
-   - Use uppercase for consistency
+3. **Node Names**: Use exact node names from this document:
+   - Adder: `inpA`, `inpB`, `carryIn` → `sum`, `carryOut`
+   - ALU: `inp1`, `inp2`, `controlSignalInput` → `output`, `carryOut`
+   - Gates: `inp[0]`, `inp[1]`, ... → `output1`
+   - Input elements: → `output1`
+   - Output elements: `inp1` →
 
-4. **Label Direction**:
-   - Set to "UP" for all gates
-   - Can be omitted for inputs/outputs (uses defaults)
+4. **Labels**:
+   - Inputs: A, B, C, D, etc.
+   - Gates: AND, OR, XOR, etc. (no numbers)
+   - Outputs: SUM, CARRY, RESULT, Q, etc.
+   - Set `labelDirection` to "UP" for all components
 
-5. **Connections**:
-   - List all connections from left to right (inputs → gates → outputs)
-   - Include feedback connections for sequential circuits
-   - Verify node names match element types
+5. **Multi-bit Circuits**:
+   - Set `bitWidth` property on Input, Output, and component
+   - All connected elements must have matching bitWidth
 
-6. **Element Properties**:
-   - `inputLength`: Number of inputs for gates (default: 2, can be 2-8 or more)
-   - `bitWidth`: Bit width for signals (default: 1)
-   - Omit if using defaults
-   - **IMPORTANT**: Use multi-input gates when appropriate (e.g., 3-input AND instead of cascading 2-input ANDs)
+6. **Multi-input Gates**:
+   - Set `inputLength` property (default is 2)
+   - Use `inp[0]`, `inp[1]`, `inp[2]`, etc.
 
 7. **Circuit Flow**:
-   - Inputs should be on the left
-   - Processing (gates) in the middle
+   - Inputs on the left
+   - Processing in the middle
    - Outputs on the right
-   - The auto-layout positions them accordingly
 
-## AI Prompt Template
+---
 
-When asking an AI to generate a circuit:
+## Node Reference Quick Reference
 
-```
-Generate a CircuitVerse circuit JSON definition for [CIRCUIT_NAME] that [DESCRIPTION].
+### Common Patterns:
+- **All Inputs**: Output is `output1`
+- **All Outputs**: Input is `inp1`
+- **Multi-input gates**: `inp[0]`, `inp[1]`, `inp[2]`, ...
+- **Single-input gates (NOT)**: `inp1`
+- **Flip-flops**: Q is `qOutput`, Q' is `qInvOutput`
 
-Requirements:
-- Use element types from: Input, AndGate, OrGate, NotGate, XorGate, NandGate, NorGate, XnorGate, Output
-- Label all inputs as A, B, C, etc.
-- Label all gates with their type (AND, OR, etc.) and set labelDirection to "UP"
-- Label outputs as meaningful names (SUM, CARRY, X, Y, etc.)
-- Use snake_case for element IDs
-- Define all connections with correct node names (output1, inp1, inp[0], inp[1], etc.)
-- **USE MULTI-INPUT GATES**: If you need to AND/OR more than 2 signals, use inputLength property (e.g., 3-input AND) instead of cascading gates
-- Follow the JSON schema provided in CONTEXT_FOR_AI.md
+### Special Components:
+- **Adder**: `inpA`, `inpB`, `carryIn` → `sum`, `carryOut`
+- **ALU**: `inp1`, `inp2`, `controlSignalInput` → `output`, `carryOut`
+- **Multiplexer**: `inp[0]`, `inp[1]`, ..., `controlSignalInput` → `output1`
+- **Demultiplexer**: `input`, `controlSignalInput` → `output1[0]`, `output1[1]`, ...
+- **Decoder**: `input` → `output1[0]`, `output1[1]`, ...
+- **RAM**: `address`, `dataIn`, `write`, `reset` → `dataOut`
+- **D Flip-Flop**: `dInp`, `clockInp`, `reset`, `preset`, `en` → `qOutput`, `qInvOutput`
 
-Return ONLY the JSON without any markdown formatting or explanations.
-```
-
-## Function Usage
-
-Once you have the JSON, use it in the browser console:
-
-```javascript
-// The circuit JSON (from AI)
-const circuitJSON = {
-  "name": "Your Circuit",
-  "elements": [...],
-  "connections": [...]
-};
-
-// Create the circuit
-createCircuitFromJSON(JSON.stringify(circuitJSON));
-
-// Or load from a file/string
-createCircuitFromJSON('{"name":"Circuit",...}');
-```
-
-## Technical Notes
-
-### Element Creation
-- Elements are created asynchronously
-- Constructor parameters vary by element type
-- Position is auto-calculated based on category
-- Elements are stored with unique IDs for wiring
-
-### Wire Connections
-- Uses CircuitVerse's `node.connect()` method
-- Creates visual wires automatically
-- Handles array notation for multi-input elements
-- Validates nodes before connecting
-
-### Auto-Layout
-- **Input** category: x=50, y=50, spacing=50px
-- **Gates** category: x=225, y=50, spacing=50px
-- **Output** category: x=400, y=50, spacing=50px
-- Auto-wraps at y>500, shifts x by 100px
-
-### Centering
-- Automatically calls `menuItemClicked(7)` after circuit creation
-- Centers viewport on the created circuit
-
-## Error Handling
-
-Common errors and solutions:
-
-1. **"Element not found"**: Check element type spelling matches exactly
-2. **"Node not found"**: Verify node name (output1 vs inp1 vs inp[0])
-3. **"Connection failed"**: Ensure source element has output and target has input
-4. **"Invalid JSON"**: Validate JSON syntax before passing to function
-
-## Best Practices
-
-1. Start simple - test with basic gates first
-2. Verify node names from CircuitVerse source files if uncertain
-3. Use meaningful labels for clarity
-4. Keep circuits modular and readable
-5. Test connections incrementally for complex circuits
-6. Use consistent naming conventions
-7. Document complex circuits in the description field
+---
 
 ## Additional Resources
 
 - CircuitVerse documentation: https://docs.circuitverse.org/
 - Element source code: `CircuitVerse-master/simulator/src/modules/`
-- Circuit elements reference: `circuit-elements.json`

@@ -60,148 +60,189 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 function createCircuitGeneratorUI() {
   const container = document.createElement('div');
   container.id = 'ai-circuit-generator';
+  // SVG icon for the circuit/AI themed button
+  const circuitIcon = `<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="14" y="14" width="20" height="20" rx="2" fill="white" fill-opacity="0.95"/>
+    <path d="M19 14V9M29 14V9M19 34V39M29 34V39M14 19H9M14 29H9M34 19H39M34 29H39" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M24 18L25.8 22.2L30 24L25.8 25.8L24 30L22.2 25.8L18 24L22.2 22.2Z" fill="#42b983"/>
+  </svg>`;
+
+  // Small icon for header
+  const headerIcon = `<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="24" cy="24" r="22" fill="#42b983"/>
+    <rect x="14" y="14" width="20" height="20" rx="2" fill="white" fill-opacity="0.95"/>
+    <path d="M19 14V9M29 14V9M19 34V39M29 34V39M14 19H9M14 29H9M34 19H39M34 29H39" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M24 18L25.8 22.2L30 24L25.8 25.8L24 30L22.2 25.8L18 24L22.2 22.2Z" fill="#42b983"/>
+  </svg>`;
+
   container.innerHTML = `
     <style>
       #ai-circuit-generator {
         position: fixed;
-        bottom: 20px;
-        left: 20px;
+        bottom: 24px;
+        left: 24px;
         z-index: 10000;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       }
-      
+
       #ai-generator-toggle {
-        width: 56px;
-        height: 56px;
-        border-radius: 28px;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
         border: none;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        font-size: 28px;
+        background: #42b983;
         cursor: pointer;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(66, 185, 131, 0.3);
+        transition: all 0.2s ease;
         display: flex;
         align-items: center;
         justify-content: center;
         padding: 0;
       }
-      
+
       #ai-generator-toggle:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+        transform: scale(1.05);
+        box-shadow: 0 6px 20px rgba(66, 185, 131, 0.4);
       }
-      
+
       #ai-generator-toggle:active {
-        transform: translateY(0);
+        transform: scale(0.98);
       }
-      
+
+      #ai-generator-toggle svg {
+        width: 28px;
+        height: 28px;
+      }
+
       #ai-generator-panel {
         position: absolute;
-        bottom: 70px;
+        bottom: 64px;
         left: 0;
-        width: 320px;
-        background: white;
+        width: 340px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
         border-radius: 12px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
         padding: 20px;
         display: none;
         opacity: 0;
         transform: translateY(10px);
-        transition: all 0.3s ease;
+        transition: all 0.2s ease;
       }
-      
+
       #ai-generator-panel.visible {
         display: block;
         opacity: 1;
         transform: translateY(0);
       }
-      
+
       #ai-generator-panel h3 {
-        margin: 0 0 12px 0;
-        font-size: 16px;
-        font-weight: 600;
-        color: #1a202c;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
+        margin: 0 0 16px 0;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #454545;
       }
-      
+
+      #ai-generator-panel h3 svg {
+        width: 22px;
+        height: 22px;
+        flex-shrink: 0;
+      }
+
       #ai-circuit-description {
         width: 100%;
-        min-height: 80px;
-        padding: 12px;
-        border: 2px solid #e2e8f0;
+        min-height: 100px;
+        padding: 14px;
+        border: 1px solid #e2e8f0;
         border-radius: 8px;
+        background: #f8f9fa;
         font-size: 14px;
+        color: #454545;
         resize: vertical;
-        transition: border-color 0.2s;
         box-sizing: border-box;
         font-family: inherit;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
       }
-      
+
+      #ai-circuit-description::placeholder {
+        color: #bbbbbb;
+      }
+
       #ai-circuit-description:focus {
         outline: none;
-        border-color: #667eea;
+        border-color: #42b983;
+        box-shadow: 0 0 0 3px rgba(66, 185, 131, 0.1);
+        background: #ffffff;
       }
-      
+
       #ai-generate-btn {
         width: 100%;
-        padding: 12px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 14px 20px;
+        margin-top: 12px;
+        background: #42b983;
         color: white;
         border: none;
         border-radius: 8px;
         font-size: 14px;
         font-weight: 600;
         cursor: pointer;
-        transition: all 0.2s;
-        margin-top: 12px;
+        transition: background 0.2s ease;
       }
-      
+
       #ai-generate-btn:hover:not(:disabled) {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        background: #3ca877;
       }
-      
+
+      #ai-generate-btn:active:not(:disabled) {
+        background: #026e57;
+      }
+
       #ai-generate-btn:disabled {
         opacity: 0.6;
         cursor: not-allowed;
       }
-      
+
       #ai-status-message {
+        display: none;
         margin-top: 12px;
-        padding: 8px 12px;
+        padding: 12px;
         border-radius: 6px;
         font-size: 13px;
-        display: none;
       }
-      
+
       #ai-status-message.success {
+        display: block;
         background: #d4edda;
+        border: 1px solid #c3e6cb;
         color: #155724;
-        display: block;
       }
-      
+
       #ai-status-message.error {
+        display: block;
         background: #f8d7da;
+        border: 1px solid #f5c6cb;
         color: #721c24;
-        display: block;
       }
-      
+
       #ai-status-message.loading {
-        background: #d1ecf1;
-        color: #0c5460;
         display: block;
+        background: #e8f4f8;
+        border: 1px solid #bee5eb;
+        color: #0c5460;
       }
     </style>
-    
-    <button id="ai-generator-toggle" title="AI Circuit Generator">✨</button>
-    
+
+    <button id="ai-generator-toggle" title="AI Circuit Generator">${circuitIcon}</button>
+
     <div id="ai-generator-panel">
-      <h3>✨ AI Circuit Generator</h3>
-      <textarea 
-        id="ai-circuit-description" 
+      <h3>${headerIcon} AI Circuit Generator</h3>
+      <textarea
+        id="ai-circuit-description"
         placeholder="Describe your circuit...&#10;Example: Create an AND gate with two inputs A and B"
       ></textarea>
       <button id="ai-generate-btn">Generate Circuit</button>
