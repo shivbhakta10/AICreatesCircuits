@@ -95,8 +95,14 @@ USER REQUEST: ${description}
 
 CIRCUIT TYPES & COMPONENTS:
 
-1. **Simple Logic Equations** (F = A + B, Y = AB + CD):
+1. **Simple Logic Equations** (F = A + B, Y = AB + CD, Y = (AB) + (CD)'):
    Use: Input, AndGate, OrGate, NotGate, XorGate, Output
+   
+   CRITICAL: For inverted sub-expressions like (CD)':
+   - First create an AND/OR gate for the sub-expression
+   - Then connect its output to a NOT gate input (NotGate uses "inp1", not "inp[0]")
+   - Finally connect NOT gate output to the next stage
+   - Example: C and D → AndGate → output1 connects to NotGate → inp1
 
 2. **Multiplexer/Demultiplexer** (when explicitly requested):
    Use: Multiplexer or Demultiplexer component
@@ -106,8 +112,11 @@ CIRCUIT TYPES & COMPONENTS:
    - Multiplexer nodes: inp[0], inp[1], ..., controlSignalInput (at bottom), output1 (right side)
    - Data inputs are on LEFT side, control at BOTTOM, output on RIGHT
 
-3. **Adder** (only for arithmetic addition):
-   Use: Adder component with nodes: inpA, inpB, carryIn -> sum, carryOut
+3. **Adder/Full Adder** (for arithmetic addition or when "full adder" is mentioned):
+   Use: Adder component (this IS the full adder component)
+   - Input nodes: inpA, inpB, carryIn
+   - Output nodes: sum, carryOut
+   - DO NOT create full adder using OR/AND/XOR gates - use the Adder component directly
 
 4. **Flip-flops** (D, T, JK, SR):
    Use: DflipFlop, TflipFlop, JKflipFlop, SRflipFlop
@@ -126,29 +135,63 @@ JSON SCHEMA:
 
 NODE NAMING RULES:
 - Input/Gate outputs: "output1"
-- Gate inputs: "inp[0]", "inp[1]", "inp[2]", etc.
+- Multi-input gate inputs (AndGate, OrGate, NandGate, NorGate, XorGate, XnorGate): "inp[0]", "inp[1]", "inp[2]", etc.
+- NotGate input: "inp1" (single input, NOT inp[0])
+- Adder inputs: "inpA", "inpB", "carryIn"
+- Adder outputs: "sum", "carryOut"
 - Output element: "inp1"
 - Multiplexer control: "controlSignalInput"
 - Multiplexer data inputs: "inp[0]", "inp[1]", etc.
 
-EXAMPLE 1 - Logic equation "F = A + B":
+EXAMPLE 1 - Complex logic equation "Y = (A • B) + (C • D)'":
 {
-  "name": "OR Gate",
-  "description": "F = A + B",
+  "name": "Complex Logic Circuit",
+  "description": "Y = (A • B) + (C • D)'",
   "elements": [
     {"id": "input_a", "type": "Input", "label": "A"},
     {"id": "input_b", "type": "Input", "label": "B"},
+    {"id": "input_c", "type": "Input", "label": "C"},
+    {"id": "input_d", "type": "Input", "label": "D"},
+    {"id": "and_ab", "type": "AndGate", "label": "AND", "labelDirection": "UP"},
+    {"id": "and_cd", "type": "AndGate", "label": "AND", "labelDirection": "UP"},
+    {"id": "not_cd", "type": "NotGate", "label": "NOT", "labelDirection": "UP"},
     {"id": "or_gate", "type": "OrGate", "label": "OR", "labelDirection": "UP"},
-    {"id": "output_f", "type": "Output", "label": "F"}
+    {"id": "output_y", "type": "Output", "label": "Y"}
   ],
   "connections": [
-    {"from": "input_a", "fromNode": "output1", "to": "or_gate", "toNode": "inp[0]"},
-    {"from": "input_b", "fromNode": "output1", "to": "or_gate", "toNode": "inp[1]"},
-    {"from": "or_gate", "fromNode": "output1", "to": "output_f", "toNode": "inp1"}
+    {"from": "input_a", "fromNode": "output1", "to": "and_ab", "toNode": "inp[0]"},
+    {"from": "input_b", "fromNode": "output1", "to": "and_ab", "toNode": "inp[1]"},
+    {"from": "input_c", "fromNode": "output1", "to": "and_cd", "toNode": "inp[0]"},
+    {"from": "input_d", "fromNode": "output1", "to": "and_cd", "toNode": "inp[1]"},
+    {"from": "and_ab", "fromNode": "output1", "to": "or_gate", "toNode": "inp[0]"},
+    {"from": "and_cd", "fromNode": "output1", "to": "not_cd", "toNode": "inp1"},
+    {"from": "not_cd", "fromNode": "output1", "to": "or_gate", "toNode": "inp[1]"},
+    {"from": "or_gate", "fromNode": "output1", "to": "output_y", "toNode": "inp1"}
   ]
 }
 
-EXAMPLE 2 - "Boolean Expression using 4:1 Multiplexer: F = x'y + xy' + xz":
+EXAMPLE 2 - Full Adder Circuit:
+{
+  "name": "Full Adder",
+  "description": "Full Adder using Adder component",
+  "elements": [
+    {"id": "input_a", "type": "Input", "label": "A"},
+    {"id": "input_b", "type": "Input", "label": "B"},
+    {"id": "input_cin", "type": "Input", "label": "Cin"},
+    {"id": "adder", "type": "Adder", "label": "FA", "labelDirection": "UP"},
+    {"id": "output_sum", "type": "Output", "label": "Sum"},
+    {"id": "output_cout", "type": "Output", "label": "Cout"}
+  ],
+  "connections": [
+    {"from": "input_a", "fromNode": "output1", "to": "adder", "toNode": "inpA"},
+    {"from": "input_b", "fromNode": "output1", "to": "adder", "toNode": "inpB"},
+    {"from": "input_cin", "fromNode": "output1", "to": "adder", "toNode": "carryIn"},
+    {"from": "adder", "fromNode": "sum", "to": "output_sum", "toNode": "inp1"},
+    {"from": "adder", "fromNode": "carryOut", "to": "output_cout", "toNode": "inp1"}
+  ]
+}
+
+EXAMPLE 3 - "Boolean Expression using 4:1 Multiplexer: F = x'y + xy' + xz":
 SPECIAL CASE: When implementing Boolean expressions with MUX, use truth table method:
 - For 4:1 MUX with 3 variables (x, y, z): Use 2 vars (x, y) as control/select lines, 1 var (z) for data inputs
 - Build truth table, group by control lines (x y), derive data inputs from output column
@@ -228,13 +271,23 @@ CRITICAL MULTIPLEXER RULES FOR BOOLEAN EXPRESSIONS:
 4. **Input labels**: Use "x y" for 2-bit select, "x y z" for 3-bit, etc.
 5. **Truth table method**: Group rows by select variables, check if output is constant (0/1) or depends on remaining variable
 
+CONNECTION RULES - ENSURE ALL ELEMENTS ARE CONNECTED:
+1. Every Input must connect to at least one gate input
+2. Every gate output1 must connect to another gate input or Output inp1
+3. For expressions like (AB)':
+   - A connects to AndGate inp[0]
+   - B connects to AndGate inp[1]
+   - AndGate output1 connects to NotGate inp1  ← CRITICAL: NotGate uses inp1, not inp[0]!
+   - NotGate output1 connects to next stage
+4. Every element in "elements" array must appear in "connections" array
+5. Double-check that intermediate gates (like AND before NOT) are properly connected
+
 INSTRUCTIONS:
 1. Analyze the request and choose appropriate components
-2. For Boolean + MUX: Build truth table, determine data inputs
-3. Create necessary inputs (variables + constants)
-4. Add NotGate if z' or inverted inputs needed
-5. Connect control signals and data inputs correctly
-6. Return ONLY the JSON object, no markdown, no explanations
+2. List ALL elements needed (inputs, gates, output)
+3. Create ALL connections - verify each element output connects somewhere
+4. For inverted sub-expressions: gate → NOT gate → next stage (3 connections minimum)
+5. Return ONLY the JSON object, no markdown, no explanations
 
 Generate the circuit JSON for: ${description}`;
 
