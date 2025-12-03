@@ -120,6 +120,8 @@ CIRCUIT TYPES & COMPONENTS:
 
 4. **Flip-flops** (D, T, JK, SR):
    Use: DflipFlop, TflipFlop, JKflipFlop, SRflipFlop
+   - DflipFlop: inputs (dInp, clockInp, reset, preset, en), outputs (qOutput, qInvOutput)
+   - For basic D flip-flop: only connect dInp and clockInp, leave reset/preset/en unconnected
 
 JSON SCHEMA:
 {
@@ -139,6 +141,8 @@ NODE NAMING RULES:
 - NotGate input: "inp1" (single input, NOT inp[0])
 - Adder inputs: "inpA", "inpB", "carryIn"
 - Adder outputs: "sum", "carryOut"
+- DflipFlop inputs: "dInp", "clockInp", "reset", "preset", "en"
+- DflipFlop outputs: "qOutput", "qInvOutput"
 - Output element: "inp1"
 - Multiplexer control: "controlSignalInput"
 - Multiplexer data inputs: "inp[0]", "inp[1]", etc.
@@ -191,7 +195,26 @@ EXAMPLE 2 - Full Adder Circuit:
   ]
 }
 
-EXAMPLE 3 - "Boolean Expression using 4:1 Multiplexer: F = x'y + xy' + xz":
+EXAMPLE 3 - D Flip-Flop:
+{
+  "name": "D Flip-Flop",
+  "description": "D Flip-Flop circuit",
+  "elements": [
+    {"id": "input_d", "type": "Input", "label": "D"},
+    {"id": "input_clk", "type": "Input", "label": "CLK"},
+    {"id": "d_ff", "type": "DflipFlop", "label": "D-FF", "labelDirection": "UP"},
+    {"id": "output_q", "type": "Output", "label": "Q"},
+    {"id": "output_qbar", "type": "Output", "label": "Q'"}
+  ],
+  "connections": [
+    {"from": "input_d", "fromNode": "output1", "to": "d_ff", "toNode": "dInp"},
+    {"from": "input_clk", "fromNode": "output1", "to": "d_ff", "toNode": "clockInp"},
+    {"from": "d_ff", "fromNode": "qOutput", "to": "output_q", "toNode": "inp1"},
+    {"from": "d_ff", "fromNode": "qInvOutput", "to": "output_qbar", "toNode": "inp1"}
+  ]
+}
+
+EXAMPLE 4 - "Boolean Expression using 4:1 Multiplexer: F = x'y + xy' + xz":
 SPECIAL CASE: When implementing Boolean expressions with MUX, use truth table method:
 - For 4:1 MUX with 3 variables (x, y, z): Use 2 vars (x, y) as control/select lines, 1 var (z) for data inputs
 - Build truth table, group by control lines (x y), derive data inputs from output column
@@ -272,15 +295,19 @@ CRITICAL MULTIPLEXER RULES FOR BOOLEAN EXPRESSIONS:
 5. **Truth table method**: Group rows by select variables, check if output is constant (0/1) or depends on remaining variable
 
 CONNECTION RULES - ENSURE ALL ELEMENTS ARE CONNECTED:
-1. Every Input must connect to at least one gate input
+1. Every Input must connect to at least one gate/component input
 2. Every gate output1 must connect to another gate input or Output inp1
 3. For expressions like (AB)':
    - A connects to AndGate inp[0]
    - B connects to AndGate inp[1]
    - AndGate output1 connects to NotGate inp1  ← CRITICAL: NotGate uses inp1, not inp[0]!
    - NotGate output1 connects to next stage
-4. Every element in "elements" array must appear in "connections" array
-5. Double-check that intermediate gates (like AND before NOT) are properly connected
+4. For D Flip-Flop:
+   - Data Input connects to DflipFlop dInp (NOT "inpD" or "inp[0]")
+   - Clock connects to DflipFlop clockInp (NOT "clk" or "clock")
+   - Output from DflipFlop qOutput (NOT "output1" or "q")
+5. Every element in "elements" array must appear in "connections" array
+6. Double-check node names match the component specifications exactly
 
 INSTRUCTIONS:
 1. Analyze the request and choose appropriate components
