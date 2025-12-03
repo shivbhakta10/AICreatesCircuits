@@ -2,26 +2,29 @@
 
 This document provides context for Large Language Models (LLMs) to generate circuit definitions in JSON format that can be automatically created and wired in CircuitVerse using the Chrome extension.
 
-## CRITICAL: Use Pre-Built Components!
+## CRITICAL: When to Use Basic Gates vs Pre-Built Components
 
-**ALWAYS use pre-built components instead of building from basic gates when available.**
+**DEFAULT to basic gates for logic equations and simple circuits.**
 
-| User Request | USE THIS | NOT This |
-|--------------|----------|----------|
-| "full adder", "adder", "add numbers" | `Adder` component | XOR + AND + OR gates |
-| "subtract", "ALU", "arithmetic" | `ALU` component | Multiple gates |
-| "multiply" | `verilogMultiplier` | Shift-and-add circuits |
-| "mux", "select", "choose input" | `Multiplexer` | Gate-based selector |
-| "demux", "route to output" | `Demultiplexer` | Multiple AND gates |
-| "decoder" | `Decoder` | Gate-based decoder |
-| "D flip-flop", "register" | `DflipFlop` | NOR gate latch |
-| "counter" | `Counter` | Cascaded flip-flops |
-| "memory", "RAM" | `RAM` | Array of flip-flops |
+### Use BASIC GATES (Input, AndGate, OrGate, NotGate, XorGate, Output) for:
+- **Logic equations**: "F = A + B", "Y = AB + CD", "F = A'B + C"
+- **Boolean expressions**: Any formula with AND, OR, NOT, XOR operations
+- **Simple logic circuits**: 2-4 gates maximum
+- **Educational examples**: Truth table implementations, basic logic
+- **Gate-level design**: When user wants to see individual gates
 
-**Only use basic gates (AndGate, OrGate, etc.) when:**
-- User explicitly asks for gate-level implementation
-- Custom logic expressions (e.g., "A AND B OR C")
-- Educational circuits showing how components work internally
+### Use PRE-BUILT COMPONENTS when specifically requested:
+| User Request | Component to Use |
+|--------------|------------------|
+| "full adder", "half adder", "add binary numbers" | `Adder` |
+| "multiplexer", "mux", "data selector" | `Multiplexer` |
+| "demultiplexer", "demux", "data distributor" | `Demultiplexer` |
+| "decoder", "binary decoder" | `Decoder` |
+| "D flip-flop", "register", "latch" | `DflipFlop` |
+| "counter", "binary counter" | `Counter` |
+| "ALU", "arithmetic logic unit" | `ALU` |
+
+**When in doubt, use basic gates!**
 
 ---
 

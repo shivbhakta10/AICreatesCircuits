@@ -159,9 +159,22 @@
         
         // Create using constructor
         let element;
-        if (props.inputLength !== undefined) {
+        if (elementType === 'ConstantVal') {
+          // ConstantVal(x, y, scope, dir, bitWidth, state)
+          // state is a binary string: "0", "1", "101", etc.
+          const state = props.state || props.label || "0"; // Use state, label, or default to "0"
+          element = new ElementConstructor(x, y, globalScope, props.direction, props.bitWidth, state);
+        } else if (elementType === 'Multiplexer' && props.controlSignalSize !== undefined) {
+          // Multiplexer(x, y, scope, dir, bitWidth, controlSignalSize)
+          element = new ElementConstructor(x, y, globalScope, props.direction, props.bitWidth, props.controlSignalSize);
+        } else if (elementType === 'Demultiplexer' && props.controlSignalSize !== undefined) {
+          // Demultiplexer also uses controlSignalSize
+          element = new ElementConstructor(x, y, globalScope, props.direction, props.bitWidth, props.controlSignalSize);
+        } else if (props.inputLength !== undefined) {
+          // For gates with inputLength parameter
           element = new ElementConstructor(x, y, globalScope, props.direction, props.inputLength, props.bitWidth);
         } else {
+          // Standard elements
           element = new ElementConstructor(x, y, globalScope, props.direction, props.bitWidth);
         }
         element.newElement = false;
@@ -372,6 +385,16 @@
     const layerWidth = 175; // Horizontal spacing between layers
     const elementSpacing = 80; // Vertical spacing between elements
     
+    // Find multiplexer control signal connections
+    const muxControlSignals = new Map(); // Maps control input ID to multiplexer ID
+    if (circuit.connections) {
+      circuit.connections.forEach(conn => {
+        if (conn.toNode === 'controlSignalInput') {
+          muxControlSignals.set(conn.from, conn.to);
+        }
+      });
+    }
+    
     // Find the tallest column (most elements in a layer)
     const maxElementsInLayer = Math.max(...Object.values(layerGroups).map(arr => arr.length));
     const totalHeight = maxElementsInLayer * elementSpacing;
@@ -394,6 +417,23 @@
         const y = layerStartY + (index * elementSpacing);
         positions[id] = { x, y };
       });
+    });
+    
+    // Special positioning: Move control signal inputs below their multiplexers
+    muxControlSignals.forEach((muxId, inputId) => {
+      if (positions[inputId] && positions[muxId]) {
+        // Get the element to check its bitWidth
+        const element = circuit.elements.find(e => e.id === inputId);
+        const bitWidth = element?.properties?.bitWidth || 1;
+        
+        // Position control input centered below the multiplexer
+        // For multi-bit inputs, adjust x position to center the bits properly
+        const xOffset = bitWidth > 1 ? (bitWidth - 1) * 10 : 0;
+        positions[inputId] = {
+          x: positions[muxId].x - xOffset,
+          y: positions[muxId].y + 120  // Place 120px below multiplexer
+        };
+      }
     });
     
     return positions;
